@@ -1,0 +1,10 @@
+README.md
+setup.py
+trendytom/__init__.py
+trendytom.egg-info/PKG-INFO
+trendytom.egg-info/SOURCES.txt
+trendytom.egg-info/dependency_links.txt
+trendytom.egg-info/requires.txt
+trendytom.egg-info/top_level.txt
+trendytom/traders/__init__.py
+trendytom/traders/bitmex_trader.py

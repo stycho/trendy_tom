@@ -1,0 +1,86 @@
+//@version=3
+strategy(
+     title="Trendy Tom",
+     shorttitle="TrendyTom",
+     overlay=true,
+     commission_type=strategy.commission.percent, 
+     commission_value=0.075,
+     initial_capital=3000)
+
+
+// --- Inputs ---
+// Fast Moving Averages
+src = input(close, title="Source")
+
+// Moving Averages
+len1 = input(10, minval=1, title="Fast-moving Average Number")
+len2 = input(25, minval=1, title="Slow-moving Average Number")
+
+// Leverage
+leverage_multiplier = input(2.5, minval=0, title="Leverage Multiplier", type=float)
+
+// Stoploss and Take Profit percentages
+sl_inp = input(2.0, title='Stop Loss %', type=float) / 100
+tp_inp = input(4.0, title='Take Profit %', type=float) / 100
+
+// Backtester Window
+use_window = input(defval=true, title="Use Window", type=bool)
+from_month = input(defval = 9, title = "From Month", minval = 1, maxval = 12)
+from_day   = input(defval = 1, title = "From Day", minval = 1, maxval = 31)
+from_year  = input(defval = 2018, title = "From Year", minval = 2017)
+to_month   = input(defval = 1, title = "To Month", minval = 1, maxval = 12)
+to_day     = input(defval = 1, title = "To Day", minval = 1, maxval = 31)
+to_year    = input(defval = 9999, title = "To Year", minval = 2017)
+
+// Backtester Window
+start     = timestamp(from_year, from_month, from_day, 00, 00)
+finish    = timestamp(to_year, to_month, to_day, 23, 59)
+window()  => (use_window and (time >= start and time <= finish)) ? true : false
+
+
+
+// --- Calculated Values ---
+fast_moving_average = ema(src, len1)
+slow_moving_average = ema(src, len2)
+
+bearish = cross(fast_moving_average,slow_moving_average) == 1 and fast_moving_average[1] > slow_moving_average[1] 
+bullish = cross(fast_moving_average,slow_moving_average) == 1 and slow_moving_average[1] > fast_moving_average[1]
+
+stop_loss_price_long = close * (1 - sl_inp)
+stop_loss_price_short = close * (1 + sl_inp)
+
+money_in_da_bank = (strategy.position_size == 0) ? ((strategy.initial_capital + strategy.netprofit) / close) : 0
+order_size = (money_in_da_bank * leverage_multiplier)
+
+should_enter_short = bearish and window()
+should_exit_short = bullish and window() and strategy.position_size < 0
+should_enter_long = bullish and window()
+should_exit_long = bearish and window() and strategy.position_size > 0
+
+
+// --- Actions ---
+// Short
+strategy.entry("sell", strategy.short, when=should_enter_short, qty=order_size)
+strategy.exit("buy","sell", stop=stop_loss_price_short)
+strategy.close("sell", when=should_exit_short) 
+
+// Long
+strategy.entry("buy", strategy.long, when=should_enter_long, qty=order_size)
+strategy.exit("sell","buy", stop=stop_loss_price_long)
+strategy.close("buy", when=should_exit_long) 
+
+
+
+// --- Alerts ---
+alertcondition(should_enter_short, title='Enter a short', message='Enter a short')
+alertcondition(should_exit_short, title='Exit the short', message='Exit a short')
+alertcondition(should_enter_long, title='Enter a long', message='Enter a long')
+alertcondition(should_exit_long, title='Exit a long', message='Exit a long')
+
+
+
+// --- Plot ---
+plot(fast_moving_average, title="FMA", linewidth=4, color=green)
+plot(slow_moving_average, title="SMA", linewidth=4, color=red)
+plot(stop_loss_price_long, color=red, style=linebr, linewidth=2)
+plot(stop_loss_price_short, color=yellow, style=linebr, linewidth=2)
